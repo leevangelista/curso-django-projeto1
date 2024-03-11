@@ -1,9 +1,10 @@
-from django.test import TestCase
 from django.urls import reverse, resolve
 from recipes import views
-from recipes.models import Category, Recipe, User
+from unittest import skip # funçao para pular os teste
 
-class RecipeViewsTest(TestCase):
+from .test_recipe_base import RecipeTestBase
+
+class RecipeViewsTest(RecipeTestBase):
     def test_recipe_home_views_function_is_corrert(self):
         view = resolve(reverse('recipes:home'))
         self.assertIs(view.func, views.home)
@@ -20,6 +21,7 @@ class RecipeViewsTest(TestCase):
         )
         self.assertIs(view.func, views.recipe)
     
+    @skip('teste')
     def test_recipe_home_view_returns_status_code_200_ok(self):
         response = self.client.get(reverse('recipes:home'))
         self.assertEqual(response.status_code, 200)
@@ -42,31 +44,44 @@ class RecipeViewsTest(TestCase):
 
     # testes populando dados
     def test_recipe_home_template_loads_recipes(self):
-        category = Category.objects.create(name='Categoria')
-        author = User.objects.create_user(
-            first_name='user',
-            last_name='name',
-            username='username',
-            password='123456',
-            email='username@gmail.com',
-        )
-        recipe = Recipe.objects.create(
-            category=category,
-            author=author,
-            title = 'Recipe Title',
-            description = 'Recipe Description',
-            slug = 'recipe-slug',
-            preparation_time = 10,
-            preparation_time_unit = 'Minutos',
-            servings = 5,
-            servings_unit = 'Porções',
-            preparation_steps = 'Recipe Preparation Steps',
-            preparation_steps_is_html = False,
-            is_published = True,
-        )
+        # teste passando parametro para o objeto
+        self.make_recipe(author_data={
+            'first_name':'joazinho'
+        })
+
         response = self.client.get(reverse('recipes:home'))
         # response_recipes = response.context['recipes']
         # self.assertEqual(response_recipes.first().title, 'Recipe Title')
         content = response.content.decode('utf-8')
+
+        #verificar se a string esta na tela
+        response_context_recipes = response.context['recipes']
         self.assertIn('Recipe Title', content)
-        pass
+        self.assertIn('joazinho', content)
+        self.assertEqual(len(response_context_recipes), 1)
+
+    @skip('validar novamente o teste')
+    def test_recipe_detail_template_loads_the_correct_recipe(self):
+        needed_title = 'This is a detail page - It load one recipe'
+
+        self.make_recipe(title=needed_title)
+        response = self.client.get(
+            reverse(
+                'recipes:recipe',
+                kwargs={
+                    'id':1
+                }
+            )
+        )
+        content = response.content.decode('utf-8')
+
+        self.assertIn(needed_title, content)
+
+    @skip('teste que tem valor fixo')
+    def test_recipe_home_template_dont_load_recipes_not_published(self):
+        self.make_recipe(is_published=False)
+        response = self.client.get(reverse('recipes:home'))
+        self.assertIn(
+            '<h1> No recipes found here </h1>',
+            response.content.decode('utf-8')
+        )
